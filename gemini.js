@@ -8,7 +8,9 @@ async function analyzeSymptomsWithGemini(text) {
   const prompt = `
 You are a medical assistant. Based on the following symptoms, suggest 2–3 possible conditions with short descriptions and likelihood percentages.
 
-Respond ONLY in this exact JSON format:
+Respond ONLY with raw JSON. Do NOT include markdown, code blocks, explanation, or formatting.
+
+Return exactly this format:
 
 {
   "suggestions": [
@@ -29,10 +31,17 @@ Symptoms: ${text}
       contents: [{ parts: [{ text: prompt }] }]
     });
 
-    const raw = response.data.candidates[0]?.content?.parts[0]?.text || "";
+    const raw = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
     console.log("Gemini raw response:", raw);
 
-    const parsed = JSON.parse(raw);
+    // Extract JSON block using regex
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) {
+      console.warn("No JSON block found in Gemini response.");
+      return [];
+    }
+
+    const parsed = JSON.parse(match[0]);
     return parsed.suggestions || [];
   } catch (err) {
     console.error("Gemini REST error:", err.response?.data || err.message);
