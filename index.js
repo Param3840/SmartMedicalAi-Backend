@@ -26,19 +26,20 @@ app.get("/", (req, res) => {
   res.json({ ok: true });
 });
 
+
 // ---------------- AUTH ----------------
 
 app.post("/signup", async (req, res) => {
   const { fullName, age, gender, email, password } = req.body;
   try {
     const existing = await User.findOne({ email });
-    if (existing) return res.json({ success: false, message: "Email already exists" });
+    if (existing) return res.status(409).json({ success: false, message: "Email already exists" });
 
     const hash = await bcrypt.hash(password, 10);
     const user = new User({ fullName, age, gender, email, password: hash });
     await user.save();
 
-    res.json({
+    res.status(201).json({
       success: true,
       user: {
         fullName: user.fullName,
@@ -48,8 +49,8 @@ app.post("/signup", async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
-    res.json({ success: false, message: "Server error" });
+    console.error("Signup error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
@@ -57,12 +58,13 @@ app.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
     const user = await User.findOne({ email });
-    if (!user) return res.json({ success: false, message: "User not found" });
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.json({ success: false, message: "Invalid password" });
+    if (!match) return res.status(401).json({ success: false, message: "Invalid password" });
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
     res.json({
       success: true,
       token,
@@ -75,10 +77,11 @@ app.post("/login", async (req, res) => {
       }
     });
   } catch (err) {
-    console.error(err);
-    res.json({ success: false, message: "Server error" });
+    console.error("Login error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
 
 // ---------------- REMINDER ----------------
 
@@ -92,7 +95,7 @@ app.post("/reminder", async (req, res) => {
   try {
     const reminder = new Reminder({ userId, task, interval, time });
     await reminder.save();
-    res.json({ success: true, reminder });
+    res.status(201).json({ success: true, reminder });
   } catch (err) {
     console.error("Reminder error:", err);
     res.status(500).json({ success: false, message: "Failed to save reminder" });
@@ -108,6 +111,7 @@ app.get("/reminder/:userId", async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to fetch reminders" });
   }
 });
+
 
 // ---------------- ANALYZE ----------------
 
@@ -179,9 +183,7 @@ Symptoms: ${text}
           }
         ]
       },
-      {
-        headers: { "Content-Type": "application/json" }
-      }
+      { headers: { "Content-Type": "application/json" } }
     );
 
     const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -227,6 +229,7 @@ Symptoms: ${text}
   }
 });
 
+
 // ---------------- GEO LOCATION ----------------
 
 app.get("/geo-location", async (req, res) => {
@@ -259,7 +262,7 @@ app.get("/geo-location", async (req, res) => {
           visitUrl: `https://www.google.com/search?q=${encodeURIComponent(name + " hospital")}`
         };
       });
-
+      
     res.json({ hospitals });
   } catch (err) {
     console.error("GeoAPI error:", err.message);
