@@ -22,13 +22,12 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB connection error:", err));
 
+// ---------------- ROOT ----------------
 app.get("/", (req, res) => {
   res.json({ ok: true });
 });
 
-
 // ---------------- AUTH ----------------
-
 app.post("/signup", async (req, res) => {
   const { fullName, age, gender, email, password } = req.body;
   try {
@@ -82,9 +81,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-
 // ---------------- REMINDER ----------------
-
 app.post("/reminder", async (req, res) => {
   const { userId, task, interval, time } = req.body;
 
@@ -112,9 +109,7 @@ app.get("/reminder/:userId", async (req, res) => {
   }
 });
 
-
 // ---------------- ANALYZE ----------------
-
 const fallbackRules = {
   fever: [
     { name: "Flu", description: "Common viral infection", percentage: 70, mostLikely: true },
@@ -152,19 +147,17 @@ app.post("/analyze", async (req, res) => {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         contents: [
           {
             parts: [
               {
-                text: `
-You are a medical assistant. Based on the following symptoms, suggest 2–3 possible conditions with short descriptions and likelihood percentages.
+               text: `You are a medical assistant. Based on the following symptoms, suggest 2–3 possible conditions with short descriptions and likelihood percentages.
 
-Respond ONLY with raw JSON. Do NOT include markdown, code blocks, or formatting.
+Respond ONLY with raw JSON. Do NOT include markdown, code blocks, explanation, or formatting. Do NOT add any text before or after the JSON.
 
-Use this exact format:
-
+Return exactly this format:
 {
   "suggestions": [
     {
@@ -176,8 +169,8 @@ Use this exact format:
   ]
 }
 
-Symptoms: ${text}
-`
+Symptoms: ${text}`
+
               }
             ]
           }
@@ -187,12 +180,21 @@ Symptoms: ${text}
     );
 
     const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const cleaned = rawText.replace(/```json|```/g, "").trim();
+
+    console.log("Gemini raw response:", rawText);
+    const match = rawText.match(/\{[\s\S]*\}/);
+console.log("Matched JSON block:", match?.[0]);
+
 
     let suggestions = [];
     try {
-      const parsed = JSON.parse(cleaned);
-      suggestions = parsed.suggestions || [];
+      const match = rawText.match(/\{[\s\S]*\}/);
+      if (match) {
+        const parsed = JSON.parse(match[0]);
+        suggestions = parsed.suggestions || [];
+      } else {
+        console.warn("No JSON block found in Gemini response.");
+      }
     } catch (err) {
       console.warn("Failed to parse Gemini JSON:", err.message);
     }
@@ -229,9 +231,7 @@ Symptoms: ${text}
   }
 });
 
-
 // ---------------- GEO LOCATION ----------------
-
 app.get("/geo-location", async (req, res) => {
   const { lat, lng } = req.query;
 
@@ -262,7 +262,7 @@ app.get("/geo-location", async (req, res) => {
           visitUrl: `https://www.google.com/search?q=${encodeURIComponent(name + " hospital")}`
         };
       });
-      
+
     res.json({ hospitals });
   } catch (err) {
     console.error("GeoAPI error:", err.message);

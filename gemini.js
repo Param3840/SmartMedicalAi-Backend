@@ -2,7 +2,7 @@ const axios = require("axios");
 require("dotenv").config();
 
 async function analyzeSymptomsWithGemini(text) {
-  const endpoint = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent";
+  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
   const apiKey = process.env.GEMINI_API_KEY;
 
   const prompt = `
@@ -10,18 +10,23 @@ You are a medical assistant. Based on the following symptoms, suggest 2–3 poss
 
 Respond ONLY with raw JSON. Do NOT include markdown, code blocks, explanation, or formatting.
 
-Return exactly this format:
-
+Use this exact format:
 {
   "suggestions": [
     {
-      "name": "Condition name",
-      "description": "Short explanation",
+      "name": "Flu",
+      "description": "Common viral infection with fever and cough",
       "percentage": 70,
       "mostLikely": true
+    },
+    {
+      "name": "Cold",
+      "description": "Mild viral illness with sore throat",
+      "percentage": 30
     }
   ]
 }
+
 
 Symptoms: ${text}
 `;
